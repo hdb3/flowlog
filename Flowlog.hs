@@ -32,7 +32,8 @@ processTrace flowMap logLine = Data.Map.Strict.update (Just . (f ts types)) (src
     -- other, e.g. KEEPALIVE processing - (BGP type code 4+)
     f' _ _ x = x
 
+readTraceLine :: String -> (Double,Data.IP.IPv4,Data.IP.IPv4,[Int])
 readTraceLine s = (ts,src,dst,types) where
-    ([ts],s') = reads s :: ([Double], String) 
-    ([(src,dst)],s'') = reads s' :: ([(Data.IP.IPv4,Data.IP.IPv4)], String) 
-    types = readList s'' :: [Int]
+    [(ts,s')] = reads s
+    [((src,dst),s'')] = reads s'
+    [(types,_)] = readList s''
