@@ -11,7 +11,11 @@ main = do
     logs <- getContents
     let newMap = Data.Map.Strict.empty :: LogMap
         flowMap = foldl processTrace newMap (lines logs)
+        flowList = map readTraceLine (lines logs)
+    print (lines logs)
+    print $ words $ head $ lines logs
     print flowMap
+    print flowList
 
 processTrace flowMap logLine = Data.Map.Strict.update (Just . (f ts types)) (src,dst) flowMap where
     vals@(ts,src,dst,types) = readTraceLine logLine
@@ -34,6 +38,14 @@ processTrace flowMap logLine = Data.Map.Strict.update (Just . (f ts types)) (src
 
 readTraceLine :: String -> (Double,Data.IP.IPv4,Data.IP.IPv4,[Int])
 readTraceLine s = (ts,src,dst,types) where
-    [(ts,s')] = reads s
-    [((src,dst),s'')] = reads s'
-    [(types,_)] = readList s''
+    wx = words s
+    ts = read (wx !! 0)
+    src = read (wx !! 1)
+    dst = read (wx !! 2)
+    types = map read $ commas (wx !! 3)
+
+commas :: String -> [String]
+commas s = let isComma c = ',' == c
+           in case dropWhile isComma s of "" -> []
+                                          s' -> w : commas s''
+                                                where (w, s'') = break isComma s'
