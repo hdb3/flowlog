@@ -1,10 +1,34 @@
 module Main where
 
+import System.IO
 import System.Process
+import Control.Exception
+import System.Posix.Signals
 import System.Exit
 import System.Environment(getArgs)
 import qualified Network.Info
 import qualified System.Directory
+import FlowLog
+
+tSharkCommonParameters = ["-Tfields", "-eframe.time_relative", "-eip.src", "-eip.dst", "-ebgp.type", "bgp"]
+-- tShark p = readProcessWithExitCode "tshark" ( p : tSharkCommonParameters ) ""
+tShark p = let -- sigIntSet = addSignal sigINT emptySignalSet 
+               proc' = ( proc "tshark" ( p : tSharkCommonParameters ) ) { delegate_ctlc = True }
+    in do
+      readCreateProcessWithExitCode proc' "" 
+      -- mask_ ( readCreateProcessWithExitCode proc' "" )
+      -- blockSignals sigIntSet
+      -- installHandler sigINT (CatchOnce (putStrLn "bang bang!")) Nothing
+{-
+      catch ( readCreateProcessWithExitCode proc' "" )
+            (\e -> do let err = show (e :: AsyncException)
+                      hPutStr stderr ("AsyncException : " ++ err)
+                      return (ExitFailure 0,"","AsyncException" )
+            )
+-}
+        -- installHandler sigINT Ignore Nothing
+        -- unblockSignals sigIntSet
+        -- return r
 
 main = do
     interfaces <- Network.Info.getNetworkInterfaces
@@ -21,15 +45,16 @@ main = do
                 then Main.readFile arg1
                 else putStrLn $ arg1 ++ " is not a valid interface or file name"
 
-readFile fname = do
+readFile fname = mask_ $ do
     putStrLn $ "opening " ++ fname
-    tsharkVersion <- readProcess "tshark" ["--version"] ""
+    tsharkVersion <- readProcess "tshark" ["-v"] ""
     -- putStrLn tsharkVersion
-    (ec,logs,errMsg) <- readProcessWithExitCode "tshark"
-                                                [ "-r"++fname, "-Tfields", "-eframe.time_relative", "-eip.src", "-eip.dst", "-ebgp.type", "bgp"]
-                                                ""
+
+    (ec,logs,errMsg) <- tShark ( "-r" ++ fname )
+
     case ec of
-        ExitSuccess -> putStrLn $ show (( length . lines ) logs) ++ " BGP messages read"
+        ExitSuccess -> do putStrLn $ show (( length . lines ) logs) ++ " BGP messages read"
+                          flowLog logs
         ExitFailure f -> putStrLn $ "tshark failed: " ++ show f ++ " - " ++ errMsg 
     
  

@@ -1,4 +1,4 @@
-module Main where
+module FlowLog where
 
 import qualified Data.Map.Strict
 import qualified Data.IP
@@ -9,12 +9,10 @@ data Flow = Flow { tOpen , tFirstUpdate, tLastUpdate, tNotify :: Maybe Double, u
 nullFlow = Flow Nothing Nothing Nothing Nothing 0 0
 type LogMap = Data.Map.Strict.Map (Data.IP.IPv4,Data.IP.IPv4) Flow
 
-main = do
-    logs <- getContents
+flowLog logs = do
     let newMap = Data.Map.Strict.empty :: LogMap
         flowMap = foldl processTrace newMap (lines logs)
         flowList = map readTraceLine (lines logs)
-    -- putStrLn $ unlines $ map show $ getFlows flowMap
     putStrLn $ unlines $ displayFlows flowMap
 
 getFlows = filter (isJust . tFirstUpdate . snd) . Data.Map.Strict.toList
