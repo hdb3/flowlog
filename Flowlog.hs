@@ -12,15 +12,14 @@ main = do
     let newMap = Data.Map.Strict.empty :: LogMap
         flowMap = foldl processTrace newMap (lines logs)
         flowList = map readTraceLine (lines logs)
-    print (lines logs)
-    print $ words $ head $ lines logs
-    print flowMap
-    print flowList
+    putStrLn $ unlines $ map show $ Data.Map.Strict.toList flowMap
 
-processTrace flowMap logLine = Data.Map.Strict.update (Just . (f ts types)) (src,dst) flowMap where
+processTrace flowMap logLine = Data.Map.Strict.alter (f ts types) (src,dst) flowMap where
     vals@(ts,src,dst,types) = readTraceLine logLine
+    f :: Double -> [Int] -> Maybe Flow -> Maybe Flow
     f _ [] b = b
-    f ts (a:ax) b = f ts ax (f' ts a b )
+    f ts (a:ax) Nothing = f ts (a:ax) (Just nullFlow)
+    f ts (a:ax) (Just b) = f ts ax (Just (f' ts a b ))
 
     -- OPEN processing - (BGP type code 1)
     -- (reset the UPDATE/NOTIFICATION timestamps if we see an OPEN)
