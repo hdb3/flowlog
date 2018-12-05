@@ -2,21 +2,44 @@ module FlowLog where
 
 import qualified Data.Map.Strict
 import qualified Data.IP
+import Data.List(nub,sort,group)
 import Data.Maybe(isJust)
 import Numeric(showFFloat)
 
 data Flow = Flow { tOpen , tFirstUpdate, tLastUpdate, tNotify :: Maybe Double, updateCount, openCount :: Int } deriving Show
 nullFlow = Flow Nothing Nothing Nothing Nothing 0 0
+
+combineFlows 
+    ( Flow (Just tOpen1) (Just tFirstUpdate1) (Just tLastUpdate1) (Just tNotify1) updateCount1 openCount1 )
+    ( Flow (Just tOpen2) (Just tFirstUpdate2) (Just tLastUpdate2) (Just tNotify2) updateCount2 openCount2 )
+    = Flow (Just $ min tOpen1 tOpen2)
+           (Just $ min tFirstUpdate1 tFirstUpdate2)
+           (Just $ max tLastUpdate1 tLastUpdate2)
+           (Just $ max tNotify1 tNotify2)
+           (updateCount1 + updateCount2)
+           (openCount1 + openCount2 )
+
 type LogMap = Data.Map.Strict.Map (Data.IP.IPv4,Data.IP.IPv4) Flow
 
 flowLog logs = do
     let newMap = Data.Map.Strict.empty :: LogMap
         flowMap = foldl processTrace newMap (lines logs)
-        flowList = map readTraceLine (lines logs)
-    putStrLn $ unlines $ displayFlows flowMap
+        getFlows = filter (isJust . tFirstUpdate . snd) . Data.Map.Strict.toList
+        getBigFlows n = filter ((n <) . updateCount . snd) . getFlows
+        bigFlows = getBigFlows 10 flowMap
+        -- sources = map ( fst . fst ) bigFlows
+        aggregates :: [Data.IP.IPv4] -> [Data.IP.IPv4] 
+        aggregates = map head . filter ( (1 <) . length ) . group . sort
+        sources = aggregates $ map ( fst . fst ) bigFlows
+        sinks   = aggregates $ map ( snd . fst ) bigFlows
+    print (sources,sinks)
+        -- flowList = map readTraceLine (lines logs)
+    -- putStrLn $ unlines $ displayFlows flowMap
 
-getFlows = filter (isJust . tFirstUpdate . snd) . Data.Map.Strict.toList
-displayFlows = map displayFlow . getFlows 
+    putStrLn $ unlines $ map displayFlow bigFlows
+
+
+-- displayFlows = map displayFlow . getFlows 
 
 displayFlow ((src,dst),( Flow tOpen (Just tFirstUpdate) (Just tLastUpdate) tNotify updateCount openCount )) =
     let deltaUpdates = tLastUpdate - tFirstUpdate
