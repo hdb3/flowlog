@@ -74,7 +74,7 @@ displayFlow ((src,dst),( Flow tOpen (Just tFirstUpdate) (Just tLastUpdate) tNoti
         showF n f = showFFloat (Just n) f ""
         pad n s = take n $ s ++ repeat ' '
         showN n = pad n . show
-        showIP = pad 11 . show
+        showIP = pad 15 . show
         deltaOpenUpdate = maybe 0
                                 (\t -> tFirstUpdate - t)
                                 tOpen
